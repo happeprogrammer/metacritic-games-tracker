@@ -3,6 +3,7 @@ import { dayOf, slotOf } from './selection.js';
 import { collectBatch } from './collect.js';
 import { getState, setState } from './state.js';
 import { loadSettings } from './settings.js';
+import { recover as recoverJobs } from './jobs.js';
 
 const TICK_MS = 30_000;
 const HEARTBEAT_MS = 10_000;
@@ -18,6 +19,7 @@ async function defaultCheckSource(client) {
 export function createScheduler({
   db, client, events, now = () => new Date(), settings = () => loadSettings(db),
   collect = collectBatch, checkSource = defaultCheckSource, timers = { setInterval, clearInterval },
+  onGameSaved = null, // (gameId) => void: queue follow-up jobs (summaries, let's plays)
 }) {
   let active = null; // the run in progress
   let timer = null;
@@ -31,6 +33,8 @@ export function createScheduler({
 
   /** Mark runs left "running" by a crash as interrupted; their items become retry candidates. */
   function recover() {
+    const jobs = recoverJobs(db);
+    if (jobs) events.warn('scheduler', `Задач ИИ возвращено в очередь после перезапуска: ${jobs}`);
     const stuck = db.prepare("SELECT COUNT(*) AS c FROM runs WHERE status = 'running'").get().c;
     if (!stuck) return 0;
     db.prepare("UPDATE runs SET status = 'interrupted', finished_at = ?, note = 'прерван перезапуском сервиса' WHERE status = 'running'").run(iso());
@@ -67,7 +71,7 @@ export function createScheduler({
       }
       const n = params.limit ?? s.batch_size;
       const { picked, results } = await collect({
-        db, client, settings: s, day: run.day, n, now, dryRun: Boolean(params.dryRun),
+        db, client, settings: s, day: run.day, n, now, dryRun: Boolean(params.dryRun), afterPersist: onGameSaved,
         only: params.source === 'new_releases' || params.source === 'finder' ? params.source : null,
         startOffset: Number.isInteger(params.offset) ? params.offset : null,
         hooks: {
