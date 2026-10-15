@@ -148,6 +148,33 @@ test('a video without captions is recorded with its link and retried later', asy
   assert.deepEqual({ ...row }, { status: 'no_transcript', video_url: 'https://www.youtube.com/watch?v=v1' });
 });
 
+test('the most viewed video without speech is skipped: the first one WITH captions is used', async () => {
+  const list = [
+    { videoId: 'silent', title: 'Hades gameplay no commentary', channel: 'A', views: 9_000_000, durationS: 3000 },
+    { videoId: 'broken', title: 'Hades let\'s play part 2', channel: 'B', views: 5_000_000, durationS: 3000 },
+    { videoId: 'talking', title: 'Hades let\'s play part 1', channel: 'C', views: 1_000_000, durationS: 3000 },
+  ];
+  const asked = [];
+  const s = setup({
+    yt: { findLetsplays: async () => list },
+    captions: async (id) => { asked.push(id); if (id === 'silent') return null; if (id === 'broken') throw new Error('timeout'); return { text: 'speech '.repeat(80), lang: 'en', kind: 'manual' }; },
+  });
+  await processLetsplay(s.deps);
+  assert.deepEqual(asked, ['silent', 'broken', 'talking']);
+  const row = s.db.prepare('SELECT status, video_id, channel, views FROM letsplay').get();
+  assert.deepEqual({ ...row }, { status: 'ok', video_id: 'talking', channel: 'C', views: 1_000_000 });
+});
+
+test('when no top video has captions, the most viewed one is recorded for a later retry; a single failing lookup is an error', async () => {
+  const list = [{ videoId: 'a', title: 'Hades let\'s play 1', channel: 'A', views: 10, durationS: 3000 }, { videoId: 'b', title: 'Hades let\'s play 2', channel: 'B', views: 5, durationS: 3000 }];
+  const s = setup({ yt: { findLetsplays: async () => list }, captions: async () => null });
+  const out = await processLetsplay(s.deps);
+  assert.ok(out.retryAfterMs);
+  assert.equal(s.db.prepare('SELECT video_id FROM letsplay').get().video_id, 'a');
+  const e = setup({ yt: { findLetsplays: async () => [list[0]] }, captions: async () => { throw new Error('YouTube player HTTP 429'); } });
+  await assert.rejects(processLetsplay(e.deps), /HTTP 429/);
+});
+
 test('the daily cap postpones to the next day; AI outage propagates for the queue to defer', async () => {
   const s = setup({ overrides: { letsplay_daily_cap: 1 } });
   await processLetsplay(s.deps);

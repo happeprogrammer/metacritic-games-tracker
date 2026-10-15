@@ -79,20 +79,24 @@ export function createYouTube({ fetchImpl = globalThis.fetch, settings, apiKey =
     }));
   }
 
-  /** Most viewed matching let's play for a game, or null. */
-  async function findLetsplay(gameTitle) {
+  /** Matching let's plays for a game, most viewed first (the caller walks down the list until one has speech to read). */
+  async function findLetsplays(gameTitle) {
     const useApi = settings().youtube_mode === 'api' && apiKey;
     const all = [];
     for (const query of [`${gameTitle} let's play`, `${gameTitle} прохождение`]) {
       all.push(...(await (useApi ? viaApi(query) : keyless(query))));
     }
-    return rankCandidates(all, gameTitle)[0] ?? null;
+    return rankCandidates(all, gameTitle);
   }
 
-  return { findLetsplay };
+  /** The most viewed matching let's play, or null. */
+  const findLetsplay = async (gameTitle) => (await findLetsplays(gameTitle))[0] ?? null;
+
+  return { findLetsplay, findLetsplays };
 }
 
 /** Offline stand-in for MOCK mode and demos. */
 export function mockYouTube() {
-  return { findLetsplay: async (title) => ({ videoId: 'mock-video', title: `${title} let's play, part 1`, channel: 'Demo Channel', views: 123_456, durationS: 1800 }) };
+  const video = (title) => ({ videoId: 'mock-video', title: `${title} let's play, part 1`, channel: 'Demo Channel', views: 123_456, durationS: 1800 });
+  return { findLetsplay: async (title) => video(title), findLetsplays: async (title) => [video(title)] };
 }

@@ -7,6 +7,7 @@ import { getState, setState } from '../state.js';
 
 const RETRY_DAYS = [1, 3, 7];
 const MAX_TRANSCRIPT_FOR_AI = 24_000;
+const MAX_CANDIDATES = 5;
 const DAY_MS = 86_400_000;
 
 const SYSTEM = `You summarise what a video blogger says while playing a video game.
@@ -62,12 +63,23 @@ export async function processLetsplay({ db, chain, yt, captions, game, settings:
     return plan ? { note: `${note}, повтор через ${RETRY_DAYS[attempts - 1]} дн.`, retryAfterMs: plan.retryAfterMs } : { note: `${note}, больше не ищем` };
   };
 
-  const video = await yt.findLetsplay(game.title);
-  if (!video) return later('not_found', 'летсплей не найден');
-  const meta = { video_id: video.videoId, video_url: `https://www.youtube.com/watch?v=${video.videoId}`, video_title: video.title, channel: video.channel, views: video.views, duration_s: video.durationS };
+  const found = yt.findLetsplays ? await yt.findLetsplays(game.title) : [await yt.findLetsplay(game.title)].filter(Boolean);
+  if (!found.length) return later('not_found', 'летсплей не найден');
+  const metaOf = (v) => ({ video_id: v.videoId, video_url: `https://www.youtube.com/watch?v=${v.videoId}`, video_title: v.title, channel: v.channel, views: v.views, duration_s: v.durationS });
 
-  const cap = await captions(video.videoId);
-  if (!cap) return later('no_transcript', 'у ролика нет субтитров', meta);
+  // The most viewed one is not always a talking one: walk down the list until a video has speech (captions) to read.
+  let video = null;
+  let cap = null;
+  let lastError = null;
+  for (const candidate of found.slice(0, MAX_CANDIDATES)) {
+    try { cap = await captions(candidate.videoId); } catch (e) { lastError = e; continue; }
+    if (cap) { video = candidate; break; }
+  }
+  if (!cap) {
+    if (lastError && lastError.message && found.length === 1) throw lastError;
+    return later('no_transcript', 'ни у одного из лучших роликов нет субтитров', metaOf(found[0]));
+  }
+  const meta = metaOf(video);
 
   const res = await chain.complete({
     system: SYSTEM, purpose: 'letsplay', gameId: game.id, promptVersion: 'lp1', validate: validateConclusion,
