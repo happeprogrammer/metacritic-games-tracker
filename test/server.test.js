@@ -260,6 +260,9 @@ test('admin: settings are validated, saved, audited; providers can be probed and
   assert.equal(saved.json.values.interval_min, 30);
   const audit = (await call('/api/v1/audit', { cookie: admin })).json.audit;
   assert.ok(audit.some((a) => a.action === 'settings.set' && a.actor === 'admin'));
+  assert.ok(audit.every((a) => 'ip' in a));
+  const observed = (await call('/api/v1/audit', { cookie: observer })).json.audit;
+  assert.ok(observed.length > 0 && observed.every((a) => !('ip' in a)), 'the observer does not see addresses');
   const probe = (await call('/api/v1/providers/groq/probe', { method: 'POST', cookie: admin })).json;
   assert.equal(probe.ok, true);
   const off = await call('/api/v1/providers/gemini', { method: 'PATCH', body: { enabled: false }, cookie: admin });

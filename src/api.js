@@ -196,7 +196,10 @@ export function createApi(app) {
     { method: 'DELETE', path: '/api/v1/games/:slug', role: 'admin', handler: ({ params }) => { const r = manage.deleteGame(params.slug); return r.ok ? J(r) : J(r, 404); } },
     { method: 'POST', path: '/api/v1/summaries/recompute', role: 'admin', handler: ({ session }) => J(manage.recomputeSummaries(session.user)) },
     // admin: diagnostics
-    { method: 'GET', path: '/api/v1/audit', role: 'admin', handler: ({ query }) => J({ audit: rows('SELECT at, actor, ip, action, detail FROM audit_log ORDER BY id DESC LIMIT ?', clamp(int(query.limit, 100), 1, 500)) }) },
+    { method: 'GET', path: '/api/v1/audit', role: 'admin', handler: ({ query, session }) => {
+      const audit = rows('SELECT at, actor, ip, action, detail FROM audit_log ORDER BY id DESC LIMIT ?', clamp(int(query.limit, 100), 1, 500));
+      return J({ audit: session.role === 'observer' ? audit.map(({ ip, ...rest }) => rest) : audit }); // the read-only observer never sees addresses
+    } },
     { method: 'GET', path: '/api/v1/events', role: 'admin', handler: ({ query }) => {
       const level = ['info', 'warn', 'error'].includes(query.level) ? query.level : null;
       return J({ events: rows(`SELECT id, at, level, scope, message FROM events ${level ? 'WHERE level = ?' : ''} ORDER BY id DESC LIMIT ?`, ...(level ? [level] : []), clamp(int(query.limit, 200), 1, 1000)) });
