@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" font-family="Segoe UI, Arial, sans-serif" font-size="14">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#5eead4"/></marker>
+    <style>
+      .box { fill: #121923; stroke: #3a4a66; stroke-width: 1.5; rx: 12; }
+      .core { fill: #151f2c; stroke: #5eead4; stroke-width: 2; rx: 16; }
+      .ext { fill: #1b1630; stroke: #a78bfa; stroke-width: 1.5; rx: 12; }
+      .t { fill: #e7edf5; } .s { fill: #8d9bb0; font-size: 12px; } .h { fill: #5eead4; font-weight: 700; }
+      .l { stroke: #5eead4; stroke-width: 1.8; fill: none; marker-end: url(#a); }
+      .d { stroke-dasharray: 5 4; }
+    </style>
+  </defs>
+  <rect width="960" height="560" fill="#0b0f16"/>
+  <text x="30" y="36" class="h" font-size="20">Games Tracker: как всё связано</text>
+
+  <rect class="box" x="30" y="80" width="150" height="70"/><text x="105" y="110" text-anchor="middle" class="t">Браузер</text><text x="105" y="130" text-anchor="middle" class="s">список · карточка · монитор</text>
+  <rect class="box" x="30" y="190" width="150" height="70"/><text x="105" y="220" text-anchor="middle" class="t">Traefik</text><text x="105" y="240" text-anchor="middle" class="s">HTTPS, сертификат</text>
+  <path class="l" d="M105 150V188"/><path class="l" d="M180 225H228"/>
+
+  <rect class="core" x="230" y="70" width="470" height="440"/>
+  <text x="250" y="98" class="h">Один контейнер: Node.js без зависимостей (≤192 МБ)</text>
+  <rect class="box" x="250" y="115" width="200" height="64"/><text x="350" y="141" text-anchor="middle" class="t">HTTP + вход</text><text x="350" y="161" text-anchor="middle" class="s">роли viewer / admin, SSE-монитор</text>
+  <rect class="box" x="480" y="115" width="200" height="64"/><text x="580" y="141" text-anchor="middle" class="t">Планировщик</text><text x="580" y="161" text-anchor="middle" class="s">раз в час, кнопка, пауза</text>
+  <rect class="box" x="250" y="205" width="200" height="64"/><text x="350" y="231" text-anchor="middle" class="t">Выбор 20 игр дня</text><text x="350" y="251" text-anchor="middle" class="s">курсор ленты, сброс по дням</text>
+  <rect class="box" x="480" y="205" width="200" height="64"/><text x="580" y="231" text-anchor="middle" class="t">Сборщик</text><text x="580" y="251" text-anchor="middle" class="s">1 запрос/с, повторы, предохранитель</text>
+  <rect class="box" x="250" y="295" width="200" height="64"/><text x="350" y="321" text-anchor="middle" class="t">Очередь задач</text><text x="350" y="341" text-anchor="middle" class="s">переживает перезапуск</text>
+  <rect class="box" x="480" y="295" width="200" height="64"/><text x="580" y="321" text-anchor="middle" class="t">Воркер резюме</text><text x="580" y="341" text-anchor="middle" class="s">цепочка провайдеров, лимиты</text>
+  <rect class="box" x="250" y="385" width="200" height="64"/><text x="350" y="411" text-anchor="middle" class="t">Проверка цитат</text><text x="350" y="431" text-anchor="middle" class="s">пункт без дословной цитаты отбрасывается</text>
+  <rect class="box" x="480" y="385" width="200" height="64"/><text x="580" y="411" text-anchor="middle" class="t">Похожие игры</text><text x="580" y="431" text-anchor="middle" class="s">TF-IDF + жанры + аспекты</text>
+  <rect class="box" x="250" y="465" width="430" height="36"/><text x="465" y="488" text-anchor="middle" class="t">SQLite (WAL): игры, оценки, резюме, очередь, прогоны, журнал, бэкап раз в сутки</text>
+
+  <path class="l" d="M580 179V203"/><path class="l" d="M580 269V293" />
+  <path class="l" d="M450 237H478"/><path class="l" d="M350 269V293"/><path class="l" d="M480 327H452"/><path class="l" d="M350 359V383"/>
+
+  <rect class="ext" x="760" y="100" width="170" height="70"/><text x="845" y="130" text-anchor="middle" class="t">Metacritic</text><text x="845" y="150" text-anchor="middle" class="s">страница + JSON-интерфейс</text>
+  <rect class="ext" x="760" y="230" width="170" height="110"/><text x="845" y="258" text-anchor="middle" class="t">Бесплатные нейросети</text><text x="845" y="280" text-anchor="middle" class="s">Groq → OpenRouter</text><text x="845" y="298" text-anchor="middle" class="s">→ Gemini → GitHub Models</text><text x="845" y="320" text-anchor="middle" class="s">лимиты и запасные пути</text>
+  <rect class="ext" x="760" y="400" width="170" height="70"/><text x="845" y="430" text-anchor="middle" class="t">YouTube</text><text x="845" y="450" text-anchor="middle" class="s">летсплеи (доп. часть 1)</text>
+  <path class="l" d="M680 237C720 237 720 135 758 135"/><path class="l" d="M680 327H758"/><path class="l d" d="M680 417C720 417 720 435 758 435"/>
+</svg>

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Вход — Games Tracker</title>
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+  <div class="login-wrap">
+    <form class="panel login-card" id="form" autocomplete="on">
+      <div class="brand mb"><span class="brand-mark">G</span> Games Tracker</div>
+      <p class="chip info">Тестовое задание на позицию AI Automation Engineer</p>
+      <p class="muted small">Демо-стенд закрыт паролем. Логин и пароль для проверяющего указаны в сопроводительном письме.</p>
+      <div class="form-grid one">
+        <label class="field">Логин<input class="input" name="username" autocomplete="username" required autofocus></label>
+        <label class="field">Пароль<input class="input" name="password" type="password" autocomplete="current-password" required></label>
+      </div>
+      <p id="error" class="small err" role="alert"></p>
+      <button class="btn btn-primary block" type="submit">Войти</button>
+    </form>
+  </div>
+  <script type="module" src="/assets/login.js"></script>
+</body>
+</html>

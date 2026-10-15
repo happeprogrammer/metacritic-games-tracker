@@ -13,6 +13,7 @@ export function loadConfig(env = process.env) {
     mock: flag(env.MOCK),
     nodeEnv: env.NODE_ENV ?? 'development',
     appHost: env.APP_HOST ?? '',
+    trustProxy: flag(env.TRUST_PROXY), // true behind Traefik: client IP and protocol come from X-Forwarded-* headers
     mcApiKey: env.METACRITIC_API_KEY || MC_PUBLIC_API_KEY,
     sessionSecret: env.SESSION_SECRET ?? '',
     viewer: Object.freeze({ user: env.VIEWER_USER ?? '', hash: env.VIEWER_PASS_HASH ?? '' }),

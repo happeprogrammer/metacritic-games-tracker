@@ -1,0 +1,47 @@
+# Production-style stack: one small container behind an existing Traefik (HTTPS), with hard resource limits.
+# Required in .env: APP_HOST, SESSION_SECRET, VIEWER_USER, VIEWER_PASS_HASH, ADMIN_USER, ADMIN_PASS_HASH
+# and at least one AI key (see .env.example).
+name: games-tracker
+
+services:
+  app:
+    build: .
+    image: games-tracker:latest
+    container_name: games-tracker
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    mem_limit: 192m
+    memswap_limit: 192m        # same as mem_limit: the container may not use swap
+    cpus: 0.3
+    pids_limit: 100
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    networks:
+      - proxy
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: ${PROXY_NETWORK:-proxy}
+      traefik.http.routers.games-tracker.rule: Host(`${APP_HOST}`)
+      traefik.http.routers.games-tracker.entrypoints: websecure
+      traefik.http.routers.games-tracker.tls.certresolver: ${CERT_RESOLVER:-letsencrypt}
+      traefik.http.services.games-tracker.loadbalancer.server.port: "3000"
+
+volumes:
+  data:
+
+networks:
+  proxy:
+    external: true
+    name: ${PROXY_NETWORK:-proxy}
