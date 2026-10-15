@@ -102,6 +102,10 @@ export function mockAdapter(id) {
   return {
     id,
     async complete({ user, maxTokens }) {
+      if (/<transcript>/.test(user)) {
+        const out = { summary: 'Блогер в целом доволен игрой: хвалит боевую систему и красоту мира, но отмечает неудобные меню и редкие просадки производительности.', pros: ['Сильная боевая система', 'Красивый мир, интересно исследовать'], cons: ['Неудобные меню и карта', 'Просадки в больших сражениях'], verdict: 'Крепкая игра, которую стоит попробовать любителям жанра.' };
+        return { text: JSON.stringify(out), usage: { in: 300, out: 120 } };
+      }
       if (!/<(critics|users)/.test(user)) return { text: '{"ok":true}', usage: { in: 10, out: 5 } };
       const out = {};
       for (const kind of ['critics', 'users']) {

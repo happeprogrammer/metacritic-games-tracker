@@ -2,6 +2,7 @@
 import { claimNext, complete, defer, fail, recover } from './jobs.js';
 import { summarizeGame } from './ai/summarize.js';
 import { AiUnavailable } from './ai/errors.js';
+import { processLetsplay } from './yt/letsplay.js';
 import { dayOf } from './selection.js';
 
 const defaultSleep = (ms) => new Promise((r) => { const t = setTimeout(r, ms); t.unref?.(); });
@@ -21,6 +22,12 @@ function createWorker({ id, type, db, events, settings, now = () => new Date(), 
     current = game.slug;
     try {
       const res = await handle({ job, game, settings: settings() });
+      if (res?.retryAfterMs) { // finished for now, but worth another try later (not counted as a failure)
+        defer(db, job.id, res.retryAfterMs, res.note, now);
+        lastActivity = now().toISOString();
+        events.info('ai', `${id}: ${game.slug}: ${res.note}`);
+        return 'deferred';
+      }
       complete(db, job.id, now);
       lastActivity = now().toISOString();
       events.info('ai', `${id}: готово ${game.slug}${res?.note ? ` (${res.note})` : ''}`);
@@ -77,6 +84,14 @@ export function createSummarizer({ db, chain, events, settings, now, sleep, pace
       const res = await summarizeGame({ db, chain, game, settings: s, now });
       return { note: res.provider ? `${res.provider}/${res.model}, отброшено пунктов ${res.dropped}${res.degraded ? ', ослабленный ответ' : ''}` : 'мало отзывов' };
     },
+  });
+}
+
+export function createLetsplay({ db, chain, yt, captions, events, settings, now, sleep, paceMs = 5000 }) {
+  return createWorker({
+    id: 'letsplay', type: 'letsplay', db, events, settings, now, sleep, paceMs,
+    enabled: (s) => s.letsplay_enabled && s.ai_enabled,
+    handle: ({ game, settings: s }) => processLetsplay({ db, chain, yt, captions, game, settings: s, now }),
   });
 }
 
