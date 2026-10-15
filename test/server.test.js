@@ -49,6 +49,9 @@ test('auth primitives: scrypt hashes verify, sessions are signed and expire, lim
   assert.ok(verifyPassword('correct horse', h));
   assert.ok(!verifyPassword('wrong', h));
   assert.ok(!verifyPassword('x', 'garbage'));
+  assert.match(h, /^scrypt(:[0-9a-f]+){5}$/, 'only [0-9a-f:] so a Docker env_file cannot mangle the hash');
+  assert.ok(!h.includes('$'));
+  assert.ok(verifyPassword('correct horse', h.replaceAll(':', '$')), 'older $-separated hashes still verify');
   let t = 1_000_000_000_000;
   const auth = createAuth(cfg, { now: () => t });
   const cookie = auth.issue('viewer', 'v');
