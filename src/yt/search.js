@@ -4,7 +4,8 @@ const SORT_BY_VIEWS_VIDEOS = 'CAMSAhAB';
 const UNWANTED = /\b(trailer|teaser|review|обзор|ost|soundtrack|cutscenes?|speedrun|reaction|announcement)\b/i;
 const MIN_SECONDS = 600;
 // A let's play title says so; this keeps out other videos that merely mention the name (e.g. 'Hades' in a Minecraft video).
-const PLAYTHROUGH = /(let'?s play|lets play|walkthrough|playthrough|gameplay|прохождение|летсплей|part\s*\d+|episode\s*\d+|ep\.?\s*\d+|#\s*\d+|серия|часть)/i;
+// Only explicit words count: "part 1" or "#1" alone also fit tabletop shows, podcasts and music videos named after the game.
+const PLAYTHROUGH = /(let'?s play|lets play|walkthrough|playthrough|gameplay|прохождение|летсплей)/i;
 
 const norm = (s) => String(s ?? '').toLowerCase().normalize('NFKC').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 

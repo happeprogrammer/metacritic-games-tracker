@@ -39,6 +39,8 @@ test('only real let\'s plays of this game are kept, the most viewed first', () =
     c('7', 'Elden Ring let\'s play LIVE', 50000, null),
     c('8', 'Elden Ring short clip', 40000, 90),
     c('9', 'Playing as the Goddess ELDEN RING boss in Minecraft!', 90000, 1300),
+    c('10', 'Elden Ring Cast play D&D #1 | tabletop show', 95000, 5000),
+    c('11', 'Elden Ring Episode 12 live podcast', 85000, 4000),
     c('2', 'duplicate', 1, 3000),
   ], 'Elden Ring');
   assert.deepEqual(ranked.map((x) => x.videoId), ['2', '1']);
