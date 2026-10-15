@@ -15,6 +15,7 @@ import { freshDb } from './helpers.js';
 const cfg = loadConfig({
   MOCK: '1', SESSION_SECRET: 's'.repeat(40), VIEWER_USER: 'viewer', VIEWER_PASS_HASH: hashPassword('viewer-pass-1'),
   ADMIN_USER: 'admin', ADMIN_PASS_HASH: hashPassword('admin-pass-1'),
+  OBSERVER_USER: 'observer', OBSERVER_PASS_HASH: hashPassword('observer-pass-1'),
 });
 let app, server, base;
 
@@ -42,7 +43,7 @@ async function login(username, password) {
   return r.status === 200 ? r.headers.getSetCookie()[0].split(';')[0] : null;
 }
 const waitIdle = async () => { for (let i = 0; i < 200 && app.scheduler.isRunning(); i++) await new Promise((r) => setTimeout(r, 25)); };
-let viewer, admin;
+let viewer, admin, observer;
 
 test('auth primitives: scrypt hashes verify, sessions are signed and expire, limiter counts', () => {
   const h = hashPassword('correct horse');
@@ -117,6 +118,8 @@ test('login: wrong credentials are refused, the right ones give an HttpOnly sign
   viewer = cookie.split(';')[0];
   admin = await login('admin', 'admin-pass-1');
   assert.ok(admin);
+  observer = await login('observer', 'observer-pass-1');
+  assert.ok(observer);
   assert.deepEqual((await call('/api/v1/me', { cookie: viewer })).json.role, 'viewer');
   assert.equal((await call('/api/v1/me', { cookie: admin })).json.role, 'admin');
   // lock-out (all test requests share one IP)
@@ -139,6 +142,30 @@ test('roles: a viewer cannot reach admin API or the admin page, an admin can', a
   assert.equal(page.headers.get('location'), '/');
   assert.equal((await call('/admin', { cookie: admin })).status, 200);
   assert.equal((await call('/api/v1/settings', { cookie: admin })).status, 200);
+});
+
+test('observer: reads every admin screen, changes and downloads nothing', async () => {
+  assert.equal((await call('/api/v1/me', { cookie: observer })).json.role, 'observer');
+  for (const p of ['/api/v1/settings', '/api/v1/providers', '/api/v1/jobs', '/api/v1/audit', '/api/v1/events', '/api/v1/admin/games', '/api/v1/ai/stats', '/api/v1/monitor', '/api/v1/games']) {
+    assert.equal((await call(p, { cookie: observer })).status, 200, p);
+  }
+  assert.equal((await call('/admin', { cookie: observer })).status, 200, 'the admin page opens for the observer');
+  const writes = [['PUT', '/api/v1/settings', { interval_min: 30 }], ['POST', '/api/v1/settings/reset', {}], ['POST', '/api/v1/settings/import', { values: {} }],
+    ['POST', '/api/v1/scheduler/pause', {}], ['POST', '/api/v1/scheduler/resume', {}], ['POST', '/api/v1/runs/current/cancel', {}], ['POST', '/api/v1/cursor/reset', {}],
+    ['POST', '/api/v1/source/check', {}], ['POST', '/api/v1/summaries/recompute', {}], ['POST', '/api/v1/jobs/retry-failed', {}], ['POST', '/api/v1/jobs/1/retry', {}],
+    ['POST', '/api/v1/providers/groq/probe', {}], ['POST', '/api/v1/providers/reset', {}], ['PATCH', '/api/v1/providers/groq', { enabled: false }],
+    ['POST', '/api/v1/games', { slug: 'x' }], ['PATCH', '/api/v1/games/elden-ring', { hidden: true }], ['POST', '/api/v1/games/elden-ring/reprocess', {}], ['DELETE', '/api/v1/games/elden-ring', undefined]];
+  for (const [method, path, body] of writes) {
+    const r = await call(path, { method, body, cookie: observer });
+    assert.equal(r.status, 403, `${method} ${path}`);
+    assert.match(r.json.error, /Только просмотр/, `${method} ${path}`);
+  }
+  for (const p of ['/api/v1/backup', '/api/v1/export/games.json', '/api/v1/export/games.csv', '/api/v1/settings/export']) {
+    assert.equal((await call(p, { cookie: observer })).status, 403, `download ${p}`);
+  }
+  assert.equal((await call('/api/v1/settings', { cookie: admin })).json.values.interval_min, 60, 'nothing was changed');
+  assert.equal((await call('/api/v1/audit', { cookie: admin })).json.audit.length, 0, 'and nothing was audited');
+  assert.equal((await call('/api/v1/auth/logout', { method: 'POST', cookie: observer })).status, 200, 'logout still works');
 });
 
 test('a manual run collects recorded games; list, filters, search and sort work', async () => {

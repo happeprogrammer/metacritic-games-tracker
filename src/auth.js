@@ -3,6 +3,7 @@ import { scryptSync, randomBytes, timingSafeEqual, createHmac } from 'node:crypt
 
 const N = 16384, R = 8, P = 1, KEYLEN = 32;
 const SESSION_TTL_S = 12 * 3600;
+const ROLES = ['viewer', 'observer', 'admin'];
 
 export function hashPassword(password) {
   const salt = randomBytes(16);
@@ -44,7 +45,7 @@ export function createLimiter({ max, windowMs, now = Date.now }) {
 const b64 = (buf) => Buffer.from(buf).toString('base64url');
 
 export function createAuth(config, { now = Date.now } = {}) {
-  const accounts = { admin: config.admin, viewer: config.viewer };
+  const accounts = { admin: config.admin, observer: config.observer ?? { user: '', hash: '' }, viewer: config.viewer };
   const failures = createLimiter({ max: 5, windowMs: 10 * 60_000, now });
   const secret = config.sessionSecret;
   const sign = (payload) => createHmac('sha256', secret).update(payload).digest();
@@ -53,7 +54,7 @@ export function createAuth(config, { now = Date.now } = {}) {
     const wait = failures.blocked(ip);
     if (wait) return { ok: false, reason: 'rate_limited', retryAfterS: wait };
     let role = null;
-    for (const r of ['admin', 'viewer']) { // always check both, so timing does not reveal which account exists
+    for (const r of ['admin', 'observer', 'viewer']) { // always check all, so timing does not reveal which account exists
       const a = accounts[r];
       const good = Boolean(a.user && a.hash) && username === a.user && verifyPassword(String(password ?? ''), a.hash);
       if (good && !role) role = r;
@@ -82,7 +83,7 @@ export function createAuth(config, { now = Date.now } = {}) {
     if (given.length !== expected.length || !timingSafeEqual(given, expected)) return null;
     try {
       const s = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-      return s.exp > now() / 1000 && (s.role === 'admin' || s.role === 'viewer') ? { role: s.role, user: s.user } : null;
+      return s.exp > now() / 1000 && ROLES.includes(s.role) ? { role: s.role, user: s.user } : null;
     } catch { return null; }
   }
 
@@ -94,4 +95,5 @@ export function createAuth(config, { now = Date.now } = {}) {
   return { login, issue, verify, cookie, clearCookie, readCookie, enabled };
 }
 
-export const roleAtLeast = (have, need) => need === 'public' || (need === 'viewer' && (have === 'viewer' || have === 'admin')) || (need === 'admin' && have === 'admin');
+/** viewer: the public side; observer: viewer plus read-only access to the admin screens (server.js applies that exception); admin: everything. */
+export const roleAtLeast = (have, need) => need === 'public' || (need === 'viewer' && ROLES.includes(have)) || (need === 'admin' && have === 'admin');

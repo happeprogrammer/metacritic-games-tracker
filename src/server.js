@@ -158,7 +158,11 @@ export function createHttpServer(app) {
       const route = matches.find((r) => r.method === req.method);
       if (!route) return sendJson(req, res, 405, { error: 'метод не поддерживается' });
       if (route.role !== 'public' && !session) return sendJson(req, res, 401, { error: 'нужен вход' });
-      if (!roleAtLeast(session?.role, route.role)) return sendJson(req, res, 403, { error: 'недостаточно прав' });
+      // The observer reads every admin screen (GET) but cannot change anything and cannot download exports or backups.
+      const observerRead = session?.role === 'observer' && route.role === 'admin' && req.method === 'GET' && !route.noObserver;
+      if (!roleAtLeast(session?.role, route.role) && !observerRead) {
+        return sendJson(req, res, 403, { error: session?.role === 'observer' ? 'Только просмотр: роль «наблюдатель» не может менять данные и скачивать выгрузки' : 'недостаточно прав' });
+      }
       if (req.method !== 'GET' && !csrfOk(req)) return sendJson(req, res, 403, { error: 'запрос отклонён' });
       const m = route.regex.exec(path);
       const params = Object.fromEntries(route.names.map((n, i) => [n, decodeURIComponent(m[i + 1])]));
@@ -176,7 +180,7 @@ export function createHttpServer(app) {
     const [, file, role] = page;
     if (path === '/login' && session) return redirect(req, res, '/');
     if (role !== 'public' && !session) return redirect(req, res, '/login');
-    if (!roleAtLeast(session?.role, role)) return redirect(req, res, '/');
+    if (!roleAtLeast(session?.role, role) && !(session?.role === 'observer' && role === 'admin')) return redirect(req, res, '/');
     serveFile(req, res, file, 'no-store');
   }
 

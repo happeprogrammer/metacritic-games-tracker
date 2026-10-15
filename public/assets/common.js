@@ -75,8 +75,8 @@ export async function mountShell(active) {
   const link = (href, label, key) => h('a', { href, class: key === active ? 'active' : '' }, label);
   const header = h('header', { class: 'topbar' }, h('div', { class: 'container' },
     h('a', { class: 'brand', href: '/' }, h('span', { class: 'brand-mark' }, 'G'), 'Games Tracker'),
-    h('nav', { class: 'nav' }, link('/', 'Игры', 'games'), link('/monitor', 'Монитор', 'monitor'), link('/about', 'О проекте', 'about'), me.role === 'admin' ? link('/admin', 'Управление', 'admin') : null),
-    h('div', { class: 'userbox' }, h('span', { class: 'chip' }, me.role === 'admin' ? 'администратор' : 'проверяющий'),
+    h('nav', { class: 'nav' }, link('/', 'Игры', 'games'), link('/monitor', 'Монитор', 'monitor'), link('/about', 'О проекте', 'about'), me.role === 'admin' || me.role === 'observer' ? link('/admin', me.role === 'observer' ? 'Управление (просмотр)' : 'Управление', 'admin') : null),
+    h('div', { class: 'userbox' }, h('span', { class: 'chip' }, { admin: 'администратор', observer: 'наблюдатель', viewer: 'проверяющий' }[me.role] ?? me.role),
       h('button', { class: 'btn btn-sm', onclick: async () => { await api('/auth/logout', { method: 'POST' }); location.href = '/login'; } }, 'Выйти'))));
   const banner = h('div', { class: 'banner' }, h('div', { class: 'container' },
     h('b', {}, 'Тестовое задание на позицию AI Automation Engineer.'),

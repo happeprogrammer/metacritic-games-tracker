@@ -155,7 +155,7 @@ export function createApi(app) {
       const r = row('SELECT * FROM runs WHERE id = ?', int(params.id, 0));
       return r ? J({ ...r, params: parse(r.params, {}), items: rows('SELECT slug, source, status, attempts, error, duration_ms FROM run_items WHERE run_id = ? ORDER BY id', r.id) }) : J({ error: 'нет такого прогона' }, 404);
     } },
-    { method: 'POST', path: '/api/v1/runs', role: 'viewer', handler: ({ body, session }) => mapRun(scheduler.runNow({ role: session.role, params: session.role === 'admin' ? body : {} })) },
+    { method: 'POST', path: '/api/v1/runs', role: 'viewer', handler: ({ body, session }) => mapRun(scheduler.runNow({ role: session.role === 'admin' ? 'admin' : 'viewer', params: session.role === 'admin' ? body : {} })) },
     // admin: control
     { method: 'POST', path: '/api/v1/scheduler/pause', role: 'admin', handler: ({ session }) => { scheduler.pause(session.user); return J({ ok: true }); } },
     { method: 'POST', path: '/api/v1/scheduler/resume', role: 'admin', handler: ({ session }) => { scheduler.resume(session.user); return J({ ok: true }); } },
@@ -165,7 +165,7 @@ export function createApi(app) {
     // admin: settings
     { method: 'GET', path: '/api/v1/settings', role: 'admin', handler: () => J({ registry: REGISTRY, values: settings() }) },
     { method: 'PUT', path: '/api/v1/settings', role: 'admin', handler: guard(({ body, session, ip }) => J({ values: setSettings(db, body, { actor: session.user, ip }) })) },
-    { method: 'GET', path: '/api/v1/settings/export', role: 'admin', handler: () => ({ status: 200, json: { exported_at: new Date().toISOString(), values: settings() }, headers: { 'content-disposition': 'attachment; filename="settings.json"' } }) },
+    { method: 'GET', path: '/api/v1/settings/export', role: 'admin', noObserver: true, handler: () => ({ status: 200, json: { exported_at: new Date().toISOString(), values: settings() }, headers: { 'content-disposition': 'attachment; filename="settings.json"' } }) },
     { method: 'POST', path: '/api/v1/settings/import', role: 'admin', handler: guard(({ body, session, ip }) => J({ values: setSettings(db, body.values ?? {}, { actor: session.user, ip }) })) },
     { method: 'POST', path: '/api/v1/settings/reset', role: 'admin', handler: ({ session, ip }) => { const d = defaults(); const keep = {}; for (const k of Object.keys(d)) keep[k] = d[k]; return J({ values: setSettings(db, keep, { actor: session.user, ip }) }); } },
     // admin: providers
@@ -201,9 +201,9 @@ export function createApi(app) {
       const level = ['info', 'warn', 'error'].includes(query.level) ? query.level : null;
       return J({ events: rows(`SELECT id, at, level, scope, message FROM events ${level ? 'WHERE level = ?' : ''} ORDER BY id DESC LIMIT ?`, ...(level ? [level] : []), clamp(int(query.limit, 200), 1, 1000)) });
     } },
-    { method: 'GET', path: '/api/v1/export/games.json', role: 'admin', handler: () => ({ status: 200, json: manage.exportRows(), headers: { 'content-disposition': 'attachment; filename="games.json"' } }) },
-    { method: 'GET', path: '/api/v1/export/games.csv', role: 'admin', handler: () => ({ status: 200, csv: manage.exportCsv(), headers: { 'content-disposition': 'attachment; filename="games.csv"' } }) },
-    { method: 'GET', path: '/api/v1/backup', role: 'admin', handler: () => ({ status: 200, backup: true }) },
+    { method: 'GET', path: '/api/v1/export/games.json', role: 'admin', noObserver: true, handler: () => ({ status: 200, json: manage.exportRows(), headers: { 'content-disposition': 'attachment; filename="games.json"' } }) },
+    { method: 'GET', path: '/api/v1/export/games.csv', role: 'admin', noObserver: true, handler: () => ({ status: 200, csv: manage.exportCsv(), headers: { 'content-disposition': 'attachment; filename="games.csv"' } }) },
+    { method: 'GET', path: '/api/v1/backup', role: 'admin', noObserver: true, handler: () => ({ status: 200, backup: true }) },
   ];
 
   return { routes, listGames, gameCard };

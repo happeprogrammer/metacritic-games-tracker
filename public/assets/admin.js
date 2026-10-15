@@ -1,7 +1,11 @@
 import { $, h, api, mountShell, fmtDate, toast } from './common.js';
 
-await mountShell('admin');
+const me = await mountShell('admin');
+const readOnly = me.role === 'observer';
 const view = $('#view');
+if (readOnly) {
+  $('h1').after(h('p', { class: 'chip info' }, 'Режим просмотра: здесь видны все функции управления, но менять данные и скачивать выгрузки нельзя. Кнопки ответят «Только просмотр».'));
+}
 
 const act = async (fn, okText) => { try { const r = await fn(); toast(okText ?? 'Готово'); return r; } catch (e) { toast(e.message, 'error'); return null; } };
 const field = (label, input) => h('label', { class: 'field' }, label, input);
@@ -73,7 +77,7 @@ async function tabSettings() {
           tabSettings();
         } catch (e) { toast(e.message, 'error'); }
       }, 'btn-primary'),
-      h('a', { class: 'btn btn-sm', href: '/api/v1/settings/export' }, 'Скачать настройки'),
+      readOnly ? null : h('a', { class: 'btn btn-sm', href: '/api/v1/settings/export' }, 'Скачать настройки'),
       btn('Сбросить всё к умолчаниям', confirmed('Вернуть все настройки к значениям по умолчанию?', () => act(() => api('/settings/reset', { method: 'POST' }).then(tabSettings), 'Сброшено'))))));
 }
 
@@ -132,7 +136,8 @@ async function tabData() {
   const stats = await api('/ai/stats');
   view.replaceChildren(h('div', { class: 'dash' },
     h('div', { class: 'panel' }, h('h2', {}, 'Выгрузка и бэкап'), h('p', { class: 'muted small' }, 'Бэкап базы также делается автоматически раз в сутки.'),
-      h('div', { class: 'row' }, h('a', { class: 'btn btn-sm', href: '/api/v1/export/games.json' }, 'Игры (JSON)'), h('a', { class: 'btn btn-sm', href: '/api/v1/export/games.csv' }, 'Игры (CSV)'), h('a', { class: 'btn btn-sm', href: '/api/v1/backup' }, 'Скачать базу данных'))),
+      readOnly ? h('p', { class: 'muted' }, 'Скачивание выгрузок и базы отключено в режиме просмотра.')
+        : h('div', { class: 'row' }, h('a', { class: 'btn btn-sm', href: '/api/v1/export/games.json' }, 'Игры (JSON)'), h('a', { class: 'btn btn-sm', href: '/api/v1/export/games.csv' }, 'Игры (CSV)'), h('a', { class: 'btn btn-sm', href: '/api/v1/backup' }, 'Скачать базу данных'))),
     h('div', { class: 'panel' }, h('h2', {}, 'Работа ИИ'),
       h('p', {}, `За 24 часа: вызовов ${stats.last_24h.calls}, успешных ${stats.last_24h.ok}. Резюме: ${stats.summaries.ok}, пунктов принято ${stats.summaries.kept}, отброшено без подтверждения ${stats.summaries.dropped}.`),
       h('div', { class: 'scroll-x' }, h('table', { class: 't' }, h('thead', {}, h('tr', {}, ['Модель', 'Вызовов', 'Успешно', 'Среднее, мс', 'Токены'].map((c) => h('th', {}, c)))),

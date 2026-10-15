@@ -18,6 +18,8 @@ export function loadConfig(env = process.env) {
     sessionSecret: env.SESSION_SECRET ?? '',
     viewer: Object.freeze({ user: env.VIEWER_USER ?? '', hash: env.VIEWER_PASS_HASH ?? '' }),
     admin: Object.freeze({ user: env.ADMIN_USER ?? '', hash: env.ADMIN_PASS_HASH ?? '' }),
+    // Read-only account for reviewers: sees every admin screen, can change and download nothing.
+    observer: Object.freeze({ user: env.OBSERVER_USER ?? '', hash: env.OBSERVER_PASS_HASH ?? '' }),
     keys: Object.freeze({
       groq: env.GROQ_API_KEY ?? '',
       openrouter: env.OPENROUTER_API_KEY ?? '',
