@@ -43,10 +43,12 @@ export async function pickBatch({ db, day, n, newReleases, finderPage, maxPages 
 
   const nr = getCursor(db, day, 'new_releases');
   if (!nr.exhausted && picked.length < n) {
-    const slugs = await newReleases();
-    for (const slug of slugs) if (!done(slug)) take(slug, 'new_releases');
-    const left = slugs.filter((s) => !done(s) && !seen.has(s));
-    if (left.length === 0 && persist) setCursor(db, day, 'new_releases', { ...nr, exhausted: 1 });
+    const slugs = await newReleases(); // null = source unavailable right now: skip it without closing it for the day
+    if (slugs) {
+      for (const slug of slugs) if (!done(slug)) take(slug, 'new_releases');
+      const left = slugs.filter((s) => !done(s) && !seen.has(s));
+      if (left.length === 0 && persist) setCursor(db, day, 'new_releases', { ...nr, exhausted: 1 });
+    }
   }
 
   const fc = getCursor(db, day, 'finder');

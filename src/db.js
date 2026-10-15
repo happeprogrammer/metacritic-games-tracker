@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { readdirSync, readFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { gzipSync, gunzipSync } from 'node:zlib';
 
 const MIGRATIONS_DIR = join(dirname(fileURLToPath(import.meta.url)), 'migrations');
 
@@ -28,6 +29,10 @@ export function migrate(db, dir = MIGRATIONS_DIR) {
   }
   return db.prepare('SELECT MAX(version) AS v FROM schema_version').get().v ?? 0;
 }
+
+/** Bulky JSON (review samples, raw payloads) is stored gzipped as a BLOB to keep the database small. */
+export const packJson = (value) => gzipSync(JSON.stringify(value));
+export const unpackJson = (blob) => JSON.parse(gunzipSync(blob).toString('utf8'));
 
 /** Run fn inside BEGIN IMMEDIATE .. COMMIT; roll back and rethrow on error. No nesting. */
 export function tx(db, fn) {

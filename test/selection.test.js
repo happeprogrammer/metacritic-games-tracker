@@ -108,6 +108,14 @@ test('the page limit ends the feed for the day', async () => {
   assert.equal(again.length, 0);
 });
 
+test('an unavailable New Releases (null) is skipped but stays open for the next try', async () => {
+  const db = freshDb();
+  const src = fakeSources([], range('f', 1, 50));
+  const batch = await pickBatch({ db, day: DAY, n: 3, ...src, newReleases: async () => null });
+  assert.deepEqual(slugs(batch), ['f1', 'f2', 'f3']);
+  assert.equal(db.prepare("SELECT COUNT(*) AS c FROM day_cursor WHERE source = 'new_releases'").get().c, 0);
+});
+
 test('an empty source gives an empty batch without errors', async () => {
   const db = freshDb();
   assert.deepEqual(await pickBatch({ db, day: DAY, n: 20, ...fakeSources([], []) }), []);
