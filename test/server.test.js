@@ -189,6 +189,11 @@ test('a manual run collects recorded games; list, filters, search and sort work'
   assert.equal((await call('/api/v1/games?platform=xbox-series-x', { cookie: viewer })).json.items.every((g) => g.platforms.some((p) => p.slug === 'xbox-series-x')), true);
   assert.equal((await call('/api/v1/games?genre=Action%20RPG', { cookie: viewer })).json.total, 1);
   assert.equal((await call('/api/v1/games?year=2022', { cookie: viewer })).json.total, 1);
+  const withVideo = (await call('/api/v1/games?video=1', { cookie: viewer })).json;
+  assert.ok(withVideo.total >= 1 && withVideo.items.every((g) => g.has_video === true), 'video filter returns only games with a video');
+  assert.ok(withVideo.items.some((g) => g.slug === 'elden-ring'));
+  assert.ok(all.items.some((g) => g.has_video === false), 'games without a video are marked as such');
+  assert.equal((await call('/api/v1/games?letsplay=1', { cookie: viewer })).json.total, 0);
   const sorted = (await call('/api/v1/games?sort=critic&dir=desc', { cookie: viewer })).json.items.map((g) => Math.max(...g.platforms.map((p) => p.critic ?? -1)));
   assert.deepEqual(sorted, [...sorted].sort((a, b) => b - a));
   assert.equal((await call('/api/v1/games?per=1&page=2', { cookie: viewer })).json.items.length, 1);

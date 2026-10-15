@@ -19,6 +19,7 @@ function buildToolbar() {
     select('platform', 'Платформа', [['', 'Все платформы'], ...facets.platforms.map((p) => [p.slug, `${p.name} (${p.count})`])], state.platform),
     select('genre', 'Жанр', [['', 'Все жанры'], ...facets.genres.map((g) => [g.name, `${g.name} (${g.count})`])], state.genre),
     select('year', 'Год', [['', 'Любой'], ...facets.years.map((y) => [y.name, `${y.name} (${y.count})`])], state.year),
+    select('media', 'Видео', [['', 'Любые'], ['video', 'Есть видео Metacritic'], ['letsplay', 'Есть заключение по летсплею']], state.media),
     select('aspect', 'Где хвалят / ругают', [['', 'Не важно'], ...facets.aspects.flatMap((a) => [[`praise:${a}`, `хвалят: ${ASPECT_RU[a]}`], [`criticism:${a}`, `ругают: ${ASPECT_RU[a]}`]])], state.aspect),
     select('sort', 'Сортировка', [['updated', 'Недавно обновлены'], ['critic', 'Оценка критиков'], ['user', 'Оценка игроков'], ['gap', 'Разрыв критики/игроки'], ['release', 'Дата выхода'], ['title', 'Название']], state.sort ?? 'updated'),
     select('dir', 'Порядок', [['desc', 'По убыванию'], ['asc', 'По возрастанию']], state.dir ?? 'desc'),
@@ -40,6 +41,8 @@ function card(g) {
       h('div', { class: 'muted small' }, [g.developer, year].filter(Boolean).join(' · ') || '—'),
       h('div', { class: 'row' }, g.platforms.map((p) => h('span', { class: 'plat', title: p.name }, platShort(p), scoreEl(p.critic, 100), p.user != null ? scoreEl(p.user, 10, true) : null))),
       h('div', { class: 'row' }, summaryChip(g.summary_status),
+        g.has_video ? h('span', { class: 'chip info', title: 'У игры есть видео на Metacritic: ссылка в карточке игры' }, '▶ видео') : null,
+        g.has_letsplay ? h('span', { class: 'chip info', title: 'Есть летсплей и заключение по нему: в карточке игры' }, '▶ летсплей') : null,
         g.gap != null && g.gap >= 1.5 ? h('span', { class: 'chip warn', title: 'Разрыв между оценками критиков и игроков (не доказательство накрутки)' }, `критики и игроки спорят (${g.gap})`) : null,
         g.praise.map((a) => h('span', { class: 'chip good' }, `+ ${ASPECT_RU[a]}`)), g.criticism.map((a) => h('span', { class: 'chip bad' }, `− ${ASPECT_RU[a]}`))),
     ));
@@ -47,7 +50,7 @@ function card(g) {
 
 function syncUrl() {
   const p = new URLSearchParams();
-  for (const k of ['q', 'platform', 'genre', 'year', 'aspect', 'sort', 'dir']) if (state[k]) p.set(k, state[k]);
+  for (const k of ['q', 'platform', 'genre', 'year', 'media', 'aspect', 'sort', 'dir']) if (state[k]) p.set(k, state[k]);
   if (state.page > 1) p.set('page', state.page);
   history.replaceState(null, '', p.size ? `?${p}` : location.pathname);
 }
@@ -58,6 +61,8 @@ async function load() {
   list.replaceChildren(h('div', { class: 'grid' }, [1, 2, 3, 4, 5, 6].map(() => h('div', { class: 'skeleton' }))));
   const p = new URLSearchParams({ per: 24, page: state.page });
   for (const k of ['q', 'platform', 'genre', 'year', 'aspect', 'sort', 'dir']) if (state[k]) p.set(k, state[k]);
+  if (state.media === 'video') p.set('video', '1');
+  if (state.media === 'letsplay') p.set('letsplay', '1');
   let data;
   try { data = await api(`/games?${p}`); } catch (e) { list.replaceChildren(h('div', { class: 'empty' }, `Не удалось загрузить: ${e.message}`)); return; }
   if (!facets) { facets = data.facets; buildToolbar(); }

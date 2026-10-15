@@ -39,7 +39,7 @@ function sparkline() {
 }
 
 function video() {
-  if (!g.video) return null;
+  if (!g.video) return h('p', { class: 'muted small' }, 'Видео для этой игры на Metacritic пока нет (у новинок его часто ещё не публикуют).');
   const box = h('div', { class: 'row' });
   const play = h('button', { class: 'btn', onclick: () => { play.replaceWith(h('iframe', { class: 'video-box', src: g.video.url, title: g.video.title ?? 'Видео', allowfullscreen: true, loading: 'lazy', referrerpolicy: 'no-referrer' })); } }, '▶ Смотреть видео');
   box.append(play, h('a', { class: 'btn', href: g.video.url, target: '_blank', rel: 'noopener noreferrer' }, 'Открыть отдельно ↗'), g.video.title ? h('span', { class: 'muted small' }, g.video.title) : null);
@@ -64,7 +64,8 @@ function summaryBlock(kind, title) {
 
 function letsplay() {
   const l = g.letsplay;
-  if (!l || l.status === 'disabled') return null;
+  if (!l) return h('div', { class: 'panel' }, h('h2', {}, 'Летсплей и заключение'), h('p', { class: 'muted' }, 'Пока не искали: поиск идёт после первого обхода, только для вышедших игр, у которых есть оценки. Если лимит нейросетей на сегодня исчерпан, игра ждёт в очереди.'));
+  if (l.status === 'disabled') return null;
   const body = [];
   if (l.status === 'ok') {
     body.push(h('p', {}, h('a', { href: l.video_url, target: '_blank', rel: 'noopener noreferrer' }, l.video_title ?? 'Ролик'), h('span', { class: 'muted small' }, ` · ${l.channel ?? ''} · ${l.views?.toLocaleString('ru-RU') ?? '?'} просмотров`)));

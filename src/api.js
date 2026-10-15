@@ -27,6 +27,8 @@ export function createApi(app) {
     if (q.platform) { where.push('EXISTS (SELECT 1 FROM game_platforms p WHERE p.game_id = g.id AND p.platform_slug = ?)'); args.push(q.platform); }
     if (q.genre) { where.push('EXISTS (SELECT 1 FROM json_each(g.genres) j WHERE j.value = ?)'); args.push(q.genre); }
     if (q.year) { where.push('substr(g.release_date, 1, 4) = ?'); args.push(q.year); }
+    if (q.video === '1') where.push('g.video_url IS NOT NULL');
+    if (q.letsplay === '1') where.push("EXISTS (SELECT 1 FROM letsplay l WHERE l.game_id = g.id AND l.status = 'ok')");
     if (q.aspect) {
       const [verdict, aspect] = q.aspect.split(':');
       if (!['praise', 'criticism'].includes(verdict) || !ASPECTS.includes(aspect)) return null;
@@ -36,6 +38,8 @@ export function createApi(app) {
     const sortCol = SORTS[q.sort] ?? 'last_fetched_at';
     const dir = q.dir === 'asc' ? 'ASC' : 'DESC';
     const inner = `SELECT g.id, g.slug, g.title, g.cover_url, g.developer, g.genres, g.release_date, g.last_fetched_at,
+      (g.video_url IS NOT NULL) AS has_video,
+      EXISTS (SELECT 1 FROM letsplay l WHERE l.game_id = g.id AND l.status = 'ok') AS has_letsplay,
       (SELECT MAX(critic_score) FROM game_platforms WHERE game_id = g.id) AS critic_best,
       (SELECT MAX(user_score) FROM game_platforms WHERE game_id = g.id) AS user_best
       FROM games g WHERE ${where.join(' AND ')}`;
@@ -58,6 +62,8 @@ export function createApi(app) {
       }
       it.praise = [...praise].slice(0, 3);
       it.criticism = [...criticism].slice(0, 3);
+      it.has_video = Boolean(it.has_video);
+      it.has_letsplay = Boolean(it.has_letsplay);
       delete it.id;
     }
     return { items, total, page, per };
