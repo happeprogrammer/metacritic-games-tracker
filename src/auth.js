@@ -6,11 +6,12 @@ const SESSION_TTL_S = 12 * 3600;
 
 export function hashPassword(password) {
   const salt = randomBytes(16);
-  return `scrypt$${N}$${R}$${P}$${salt.toString('hex')}$${scryptSync(password, salt, KEYLEN, { N, r: R, p: P }).toString('hex')}`;
+  // Separator is ":" on purpose: Docker Compose would treat "$name" inside an env_file value as a variable and corrupt the hash.
+  return `scrypt:${N}:${R}:${P}:${salt.toString('hex')}:${scryptSync(password, salt, KEYLEN, { N, r: R, p: P }).toString('hex')}`;
 }
 
 export function verifyPassword(password, stored) {
-  const [alg, n, r, p, saltHex, hashHex] = String(stored ?? '').split('$');
+  const [alg, n, r, p, saltHex, hashHex] = String(stored ?? '').split(/[:$]/); // the older "$"-separated form is still accepted
   if (alg !== 'scrypt' || !hashHex) return false;
   const expected = Buffer.from(hashHex, 'hex');
   const actual = scryptSync(password, Buffer.from(saltHex, 'hex'), expected.length, { N: Number(n), r: Number(r), p: Number(p) });
@@ -58,7 +59,7 @@ export function createAuth(config, { now = Date.now } = {}) {
       if (good && !role) role = r;
     }
     if (!role) {
-      verifyPassword('x', 'scrypt$16384$8$1$00$00'); // burn comparable time on a miss
+      verifyPassword('x', 'scrypt:16384:8:1:00:00'); // burn comparable time on a miss
       const h = failures.hit(ip);
       return { ok: false, reason: h.ok ? 'bad_credentials' : 'rate_limited', retryAfterS: h.retryAfterS };
     }
