@@ -41,6 +41,17 @@ export function parseInnertubeSearch(json) {
   return out;
 }
 
+const SEQUEL_MARK = /^(ii|iii|iv|vi|vii|viii|2|3|4|5|6|7|8)$/;
+
+/** The title names this game, and not its sequel ("Hades II" is not "Hades"). `name` is already normalised. */
+function namesThisGame(title, name) {
+  const t = ` ${norm(title)} `;
+  const i = t.indexOf(` ${name} `);
+  if (i === -1) return false;
+  const next = t.slice(i + name.length + 2).split(' ')[0];
+  return !SEQUEL_MARK.test(next) || SEQUEL_MARK.test(name.split(' ').pop());
+}
+
 /** Keep real let's plays: the game named in the title, long enough, not live, not a trailer/review/etc.; most viewed first. */
 export function rankCandidates(candidates, gameTitle) {
   const name = norm(gameTitle);
@@ -49,7 +60,7 @@ export function rankCandidates(candidates, gameTitle) {
     .filter((c) => {
       if (seen.has(c.videoId)) return false;
       seen.add(c.videoId);
-      return c.durationS !== null && c.durationS >= MIN_SECONDS && norm(c.title).includes(name) && PLAYTHROUGH.test(c.title) && !UNWANTED.test(c.title);
+      return c.durationS !== null && c.durationS >= MIN_SECONDS && namesThisGame(c.title, name) && PLAYTHROUGH.test(c.title) && !UNWANTED.test(c.title);
     })
     .sort((a, b) => b.views - a.views);
 }

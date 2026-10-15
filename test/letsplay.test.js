@@ -46,6 +46,15 @@ test('only real let\'s plays of this game are kept, the most viewed first', () =
   assert.deepEqual(ranked.map((x) => x.videoId), ['2', '1']);
 });
 
+test('a sequel is not the game, but a numbered game still matches its own number', () => {
+  const c = (videoId, title) => ({ videoId, title, views: 1, durationS: 3000, channel: 'x' });
+  const names = (title, list) => rankCandidates(list.map((t, i) => c(String(i), t)), title).map((x) => x.title);
+  assert.deepEqual(names('Hades', ['Hades II Technical Test - Live Gameplay', 'Hades Gameplay Walkthrough', 'Hades: Full Walkthrough']), ['Hades Gameplay Walkthrough', 'Hades: Full Walkthrough']);
+  assert.deepEqual(names('Baldur\'s Gate 3', ['Baldur\'s Gate 3 Gameplay', 'Baldur\'s Gate 3 Part 2 Walkthrough']), ['Baldur\'s Gate 3 Gameplay', 'Baldur\'s Gate 3 Part 2 Walkthrough']);
+  assert.deepEqual(names('Hades II', ['Hades II Gameplay Walkthrough']), ['Hades II Gameplay Walkthrough']);
+  assert.deepEqual(names('Portal', ['Portal 2 Walkthrough', 'Portal Let\'s Play']), ['Portal Let\'s Play']);
+});
+
 test('search: keyless mode asks the site endpoint sorted by views; API mode uses the Data API and durations', async () => {
   const urls = [];
   const keyless = createYouTube({ settings: () => settings, fetchImpl: async (url, init) => { urls.push([url, init.body]); return res(search(video('k1', 'Hades let\'s play', 1000, '30:00'))); } });
