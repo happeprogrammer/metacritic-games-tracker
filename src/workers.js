@@ -90,7 +90,8 @@ export function createSummarizer({ db, chain, events, settings, now, sleep, pace
 export function createLetsplay({ db, chain, yt, captions, events, settings, now, sleep, paceMs = 5000 }) {
   return createWorker({
     id: 'letsplay', type: 'letsplay', db, events, settings, now, sleep, paceMs,
-    enabled: (s) => s.letsplay_enabled && s.ai_enabled,
+    // Let's plays are a bonus: they stop when under 30% of the day's AI budget is left, which stays reserved for review summaries.
+    enabled: (s) => s.letsplay_enabled && s.ai_enabled && chain.headroom() > 0.3,
     handle: ({ game, settings: s }) => processLetsplay({ db, chain, yt, captions, game, settings: s, now }),
   });
 }

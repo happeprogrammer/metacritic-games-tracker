@@ -142,8 +142,20 @@ export function createChain({ db, settings, adapters, now = () => new Date(), sl
     });
   }
 
+  /** Share of today's calls still unspent across the usable providers (1 = untouched, 0 = all spent). */
+  function headroom() {
+    let cap = 0;
+    let left = 0;
+    for (const p of settings().ai_providers) {
+      if (!p.enabled || !adapters[p.id] || untilMs(p.id) > nowMs()) continue;
+      cap += p.daily_cap;
+      left += Math.max(0, p.daily_cap - callsToday(p.id));
+    }
+    return cap ? left / cap : 0;
+  }
+
   /** Forget cooldowns (admin action). */
   const resetBreakers = () => setState(db, 'ai_breaker', {});
 
-  return { complete, probe, status, resetBreakers, candidates };
+  return { complete, probe, status, resetBreakers, candidates, headroom };
 }

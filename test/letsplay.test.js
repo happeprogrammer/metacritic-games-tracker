@@ -9,6 +9,7 @@ import { createEvents } from '../src/events.js';
 import { mockAdapter } from '../src/ai/providers.js';
 import { AiUnavailable } from '../src/ai/errors.js';
 import * as jobs from '../src/jobs.js';
+import { setState } from '../src/state.js';
 import { defaults } from '../src/settings.js';
 import { freshDb, addGame } from './helpers.js';
 
@@ -210,6 +211,21 @@ test('planLetsplay queues only released, rated games without a finished let\'s p
   s.db.prepare('UPDATE game_platforms SET critic_count = 5').run();
   s.db.prepare("INSERT INTO letsplay(game_id, status, attempts, next_retry_at) VALUES (?, 'not_found', 1, '2999-01-01')").run(s.game.id);
   assert.equal(planLetsplay(s.db, s.game.id, settings, s.now), 'later', 'retry time has not come yet');
+});
+
+test('let\'s plays yield to summaries: they pause when under 30% of the daily AI budget is left', async () => {
+  const s = setup();
+  planLetsplay(s.db, s.game.id, settings, s.now);
+  const events = createEvents({ db: s.db });
+  const w = createLetsplay({ db: s.db, chain: s.deps.chain, yt: s.deps.yt, captions: s.deps.captions, events, settings: () => settings, now: s.now, sleep: async () => {} });
+  assert.equal(s.deps.chain.headroom(), 1);
+  setState(s.db, 'ai_calls:groq:2026-10-15', 95); // of 99
+  assert.ok(s.deps.chain.headroom() < 0.3);
+  assert.equal(await w.runOnce(), 'disabled');
+  assert.equal(w.snapshot().state, 'paused');
+  assert.equal(jobs.stats(s.db).pending, 1, 'the job waits, it is not lost');
+  setState(s.db, 'ai_calls:groq:2026-10-15', 10);
+  assert.equal(await w.runOnce(), 'done');
 });
 
 test('the worker completes, defers on retryAfterMs and on AI outage', async () => {
