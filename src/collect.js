@@ -6,9 +6,9 @@ import { fetchGame, persistGame } from './pipeline.js';
  * hooks (all optional): onPicked(batch), onStart(item), onDone(item, info), onFail(item, err), onWarn(msg), shouldStop().
  * dryRun only reports what would be taken. One failing game never stops the others.
  */
-export async function collectBatch({ db, client, settings, day, n, now = () => new Date(), hooks = {}, dryRun = false }) {
+export async function collectBatch({ db, client, settings, day, n, now = () => new Date(), hooks = {}, dryRun = false, only = null, startOffset = null }) {
   const batch = await pickBatch({
-    db, day, n,
+    db, day, n, only, startOffset,
     maxPages: settings.max_finder_pages_per_day,
     persist: !dryRun,
     newReleases: async () => {

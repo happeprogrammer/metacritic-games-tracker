@@ -5,6 +5,12 @@ export function dayOf(date, tz) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
 }
 
+/** Hour slot YYYY-MM-DDTHH in the given time zone (one scheduled run per slot). */
+export function slotOf(date, tz) {
+  const hour = new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', hourCycle: 'h23' }).format(date);
+  return `${dayOf(date, tz)}T${hour}`;
+}
+
 const getCursor = (db, day, source) =>
   db.prepare('SELECT next_offset, pages, exhausted FROM day_cursor WHERE day = ? AND source = ?').get(day, source) ??
   { next_offset: 0, pages: 0, exhausted: 0 };
@@ -25,8 +31,9 @@ function retryCandidates(db, day, retryMax) {
  * Pick up to n games not yet processed today. Order: (a) retries, (b) the home-page "New Releases" list,
  * (c) the SEE ALL feed continuing from the saved offset. Returns [{slug, source}].
  * persist=false (dry run) reads cursors but never writes them.
+ * Manual steering: only='new_releases'|'finder' limits the sources; startOffset restarts the feed from that offset.
  */
-export async function pickBatch({ db, day, n, newReleases, finderPage, maxPages = 50, retryMax = 3, persist = true }) {
+export async function pickBatch({ db, day, n, newReleases, finderPage, maxPages = 50, retryMax = 3, persist = true, only = null, startOffset = null }) {
   const picked = [];
   const seen = new Set();
   const take = (slug, source) => {
@@ -39,10 +46,10 @@ export async function pickBatch({ db, day, n, newReleases, finderPage, maxPages 
     return Boolean(g && (g.blacklisted || g.processed_day === day));
   };
 
-  for (const slug of retryCandidates(db, day, retryMax)) if (!done(slug)) take(slug, 'retry');
+  if (!only) for (const slug of retryCandidates(db, day, retryMax)) if (!done(slug)) take(slug, 'retry');
 
   const nr = getCursor(db, day, 'new_releases');
-  if (!nr.exhausted && picked.length < n) {
+  if (only !== 'finder' && (!nr.exhausted || only === 'new_releases') && picked.length < n) {
     const slugs = await newReleases(); // null = source unavailable right now: skip it without closing it for the day
     if (slugs) {
       for (const slug of slugs) if (!done(slug)) take(slug, 'new_releases');
@@ -51,8 +58,8 @@ export async function pickBatch({ db, day, n, newReleases, finderPage, maxPages 
     }
   }
 
-  const fc = getCursor(db, day, 'finder');
-  if (!fc.exhausted && picked.length < n) {
+  const fc = startOffset === null ? getCursor(db, day, 'finder') : { next_offset: startOffset, pages: 0, exhausted: 0 };
+  if (only !== 'new_releases' && !fc.exhausted && picked.length < n) {
     let { next_offset: offset, pages, exhausted } = fc;
     while (picked.length < n) {
       if (pages >= maxPages) { exhausted = 1; break; }

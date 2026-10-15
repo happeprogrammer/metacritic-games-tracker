@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { dayOf, pickBatch } from '../src/selection.js';
+import { dayOf, slotOf, pickBatch } from '../src/selection.js';
 import { freshDb, addGame, markProcessed, addRun, addRunItem, fakeSources, range } from './helpers.js';
 
 const DAY = '2026-10-15';
@@ -106,6 +106,34 @@ test('the page limit ends the feed for the day', async () => {
   assert.equal(db.prepare("SELECT exhausted FROM day_cursor WHERE day = ? AND source = 'finder'").get(DAY).exhausted, 1);
   const again = await pickBatch({ db, day: DAY, n: 10, maxPages: 2, ...src });
   assert.equal(again.length, 0);
+});
+
+test('only="finder" ignores New Releases and retries; only="new_releases" ignores the feed and the exhausted flag', async () => {
+  const db = freshDb();
+  const src = fakeSources(range('n', 1, 5), range('f', 1, 50));
+  markProcessed(db, slugs(await pickBatch({ db, day: DAY, n: 5, ...src })), DAY); // New Releases now exhausted
+  addRunItem(db, addRun(db, DAY, 'interrupted'), 'retry-me', 'failed');
+
+  const feedOnly = await pickBatch({ db, day: DAY, n: 3, only: 'finder', ...src });
+  assert.deepEqual(slugs(feedOnly), ['f1', 'f2', 'f3']);
+
+  const freshGame = fakeSources(range('n', 1, 6), []); // a sixth New Release appeared later
+  const nrOnly = await pickBatch({ db, day: DAY, n: 10, only: 'new_releases', ...freshGame });
+  assert.deepEqual(slugs(nrOnly), ['n6']);
+  assert.ok(!slugs(nrOnly).includes('retry-me'));
+});
+
+test('startOffset restarts the feed at an explicit position and moves the cursor there', async () => {
+  const db = freshDb();
+  const src = fakeSources([], range('f', 1, 200));
+  const batch = await pickBatch({ db, day: DAY, n: 3, startOffset: 100, only: 'finder', ...src });
+  assert.deepEqual(slugs(batch), ['f101', 'f102', 'f103']);
+  assert.equal(db.prepare("SELECT next_offset FROM day_cursor WHERE day = ? AND source = 'finder'").get(DAY).next_offset, 103);
+});
+
+test('slotOf gives the hour slot in the time zone', () => {
+  assert.equal(slotOf(new Date('2026-10-15T10:30:00Z'), 'Europe/Moscow'), '2026-10-15T13');
+  assert.equal(slotOf(new Date('2026-10-15T21:05:00Z'), 'Europe/Moscow'), '2026-10-16T00');
 });
 
 test('an unavailable New Releases (null) is skipped but stays open for the next try', async () => {
