@@ -1,0 +1,11 @@
+{
+  "name": "metacritic-games-tracker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "test": "node --disable-warning=ExperimentalWarning --test",
+    "start": "node --disable-warning=ExperimentalWarning --env-file=.env src/server.js"
+  }
+}

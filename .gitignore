@@ -1,0 +1,8 @@
+.env
+data/
+node_modules/
+CLAUDE.md
+PLAN.md
+ARCHITECTURE.md
+PROJECT_CONTEXT.md
+*.docx
